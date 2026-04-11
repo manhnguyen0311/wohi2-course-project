@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "wohi2-bruno",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
