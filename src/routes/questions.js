@@ -5,6 +5,15 @@ const authenticate = require("../middleware/auth");
 const isOwner = require("../middleware/isOwner");
 const multer = require("multer");
 const path = require("path");
+const {NotFoundError, ValidationError} = require("../lib/errors");
+const {z} = require("zod");
+
+const QuestionInput = z.object({
+  question: z.string().min(1),
+  answer: z.string().min(1),
+  keywords: z.union([z.string(), z.array(z.string())]).optional(),
+});
+
 
 const storage = multer.diskStorage({
   destination: path.join(__dirname, "..", "..", "public", "uploads"),
@@ -99,11 +108,12 @@ router.get("/:questionId", async (req, res) => {
 
 // POST /api/questions
 router.post("/", upload.single("image"), async (req, res) => {
-  const { question, answer, keywords } = req.body;
+ try{
 
-  if (!question || !answer) {
-    return res.status(400).json({ msg: "question and answer are mandatory" });
-  }
+ 
+  const { question, answer, keywords } = QuestionInput.parse(req.body);
+
+
 
   const keywordsArray = typeof keywords === "string" 
     ? keywords.split(",").map(k => k.trim()).filter(k => k !== "")
@@ -128,15 +138,19 @@ router.post("/", upload.single("image"), async (req, res) => {
   });
 
   res.status(201).json(formatQuestion(newQuestion));
+} catch (error) {
+  return res.status(400).json({ msg: "question and answer are mandatory" });
+}
 });
+
 
 // PUT /api/questions/:questionId
 router.put("/:questionId", isOwner, upload.single("image"), async (req, res) => {
   const questionId = Number(req.params.questionId);
-  const { question, answer, keywords } = req.body;
+  const { question, answer, keywords } = QuestionInput.parse(req.body);
 
   if (!question || !answer) {
-    return res.status(400).json({ msg: "question and answer are mandatory" });
+    throw new ValidationError("question and answer are mandatory");
   }
 
   const keywordsArray = typeof keywords === "string" 
