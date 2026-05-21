@@ -1,5 +1,5 @@
 const CONFIG = {
-  API_URL: "http://localhost:3000",
+  API_URL: "https://wohi2-course-project-production-c8b5.up.railway.app",
   ROUTES: {
     LOGIN: "/api/auth/login",
     REGISTER: "/api/auth/register",
