@@ -12,6 +12,11 @@ const SECRET = process.env.JWT_SECRET;
 router.post("/register", async (req, res) => {
   try{
   const { email, password, name } = req.body;
+  
+  // check if password is shorter and 8
+  if (!password || password.length < 8) {
+  return res.status(400).json({ msg: "Password must be at least 8 characters long" });
+}
 
   if (!email || !password || !name) {
     throw new ValidationError("question and answer are mandatory");
