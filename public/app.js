@@ -442,6 +442,38 @@ function handleLogout() {
   showAuth();
 }
 
+async function renderLeaderboard() {
+  const panel = document.getElementById("leaderboard-panel");
+  if (!panel) return;
+
+  try {
+    const board = await apiFetch("/questions/game/leaderboard");
+    
+    if (!board || board.length === 0) {
+      panel.innerHTML = `<h3 style="margin-top:0;font-size:1.1rem">🏆 Top 5 Players</h3><p class="empty-state">No rankings yet!</p>`;
+      return;
+    }
+
+    // Limit to top 5 and map rows
+    const rows = board.slice(0, 5).map((p, idx) => `
+      <tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 4px 0;"><strong>#${idx + 1}</strong></td>
+        <td style="padding: 4px 0;">${p.name}</td>
+        <td style="padding: 4px 0; text-align: right; font-weight: bold; color: green;">${p.score} pts</td>
+      </tr>
+    `).join('');
+
+    panel.innerHTML = `
+      <h3 style="margin-top:0; margin-bottom: 0.5rem; font-size:1.1rem">🏆 Top 5 Players</h3>
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  } catch (err) {
+    panel.innerHTML = `<p class="error">Leaderboard unavailable</p>`;
+  }
+}
+
 // --- Init ---
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("logout-btn").addEventListener("click", handleLogout);
@@ -451,3 +483,5 @@ document.addEventListener("DOMContentLoaded", () => {
     showAuth();
   }
 });
+
+

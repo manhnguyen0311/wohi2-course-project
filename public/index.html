@@ -600,13 +600,20 @@
     <button id="logout-btn">Log out</button>
   </header>
 
-  <main>
-    <section id="auth-section" style="display: none"></section>
+<main>
+  <section id="auth-section" style="display: none"></section>
 
-    <section id="app-section" style="display: none">
+  <section id="app-section" style="display: none">
+    <div style="display: flex; gap: 1.5rem; max-width: 1000px; margin: 0 auto 2rem auto; padding: 0 1rem;">
+      <div id="user-stats-panel" class="question-card" style="flex: 1; padding: 1rem;"></div>
+      <div id="leaderboard-panel" class="question-card" style="flex: 1; padding: 1rem;"></div>
+    </div>
+
+    <div style="max-width: 1000px; margin: 0 auto; padding: 0 1rem;">
       <div id="questions-container"></div>
-    </section>
-  </main>
+    </div>
+  </section>
+</main>
 
   <script src="config.js"></script>
   <script src="app.js"></script>

@@ -7,6 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const {NotFoundError, ValidationError} = require("../lib/errors");
 const {z} = require("zod");
+const authenticateToken = require("../middleware/auth");
 
 const QuestionInput = z.object({
   question: z.string().min(1),
@@ -143,6 +144,64 @@ router.post("/", upload.single("image"), async (req, res) => {
 }
 });
 
+// GET /api/questions/user/stats
+// Returns the logged-in user's total attempts and score
+router.get("/user/stats", authenticateToken, async (req, res) => {
+  try {
+    const total = await prisma.attempt.count({
+      where: { userId: req.user.id }
+    });
+
+    const correct = await prisma.attempt.count({
+      where: { userId: req.user.id, isCorrect: true }
+    });
+
+    res.json({ totalAttempts: total, correctAnswers: correct });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching stats" });
+  }
+});
+
+// GET /api/questions/game/leaderboard
+// Returns top users ranked by their total correct answers
+router.get("/game/leaderboard", async (req, res) => {
+  try {
+    // Group attempts by user, count correct ones, and sort descending
+    const leaderboardData = await prisma.attempt.groupBy({
+      by: ['userId'],
+      where: { isCorrect: true },
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 5 // Top 5 players
+    });
+
+    // Populate user names so we aren't just showing IDs
+    const leaderboard = await Promise.all(
+  leaderboardData.map(async (entry) => {
+    // 1. Safety check to make sure the entry data is valid
+    if (!entry || !entry.userId) {
+      return { name: "Unknown Player", score: 0 };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: entry.userId },
+      select: { name: true }
+    });
+
+    // 2. Double safety check: Verify 'user' is not null before reading '.name'
+    return {
+      name: user && user.name ? user.name : "Unknown Player",
+      score: entry._count && entry._count.id ? entry._count.id : 0
+    };
+  })
+);
+
+    res.json(leaderboard);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching leaderboard" });
+  }
+});
+
 
 // PUT /api/questions/:questionId
 router.put("/:questionId", isOwner, upload.single("image"), async (req, res) => {
@@ -211,5 +270,7 @@ router.post("/:questionId/play", async (req, res) => {
     correctAnswer: q.answer,
   });
 });
+
+
 
 module.exports = router;

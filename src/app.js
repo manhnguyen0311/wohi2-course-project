@@ -23,10 +23,9 @@ app.use(cors());
 app.use(express.json());
 
 
-
-// everything under /api/questions
-app.use("/api/questions", questionsRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/questions", questionsRouter);
+
 
 app.use((req, res) => {
   throw new NotFoundError();
