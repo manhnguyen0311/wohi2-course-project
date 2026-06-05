@@ -1,5 +1,6 @@
 // --- State ---
 let isRegisterMode = false;
+let showUnsolvedOnly = false; // Tracks filter state
 
 // --- Helpers ---
 function getCurrentUserId() {
@@ -125,10 +126,17 @@ async function loadQuestions(keyword = "", page = 1) {
     if (keyword) params.set("keyword", keyword);
     const result = await apiFetch(`${CONFIG.ROUTES.QUESTIONS}?${params}`);
     const { data: questions, total, totalPages } = result;
-    const currentUserId = getCurrentUserId();
 
+    // 1. Filter out solved items array dynamically based on global filter status
+    let displayedQuestions = questions;
+    if (showUnsolvedOnly) {
+      displayedQuestions = questions.filter(q => !q[CONFIG.API_FIELDS.SOLVED]);
+    }
+
+    const currentUserId = getCurrentUserId();
     const solvedCount = questions.filter((q) => q[CONFIG.API_FIELDS.SOLVED]).length;
 
+    // Build the dynamic Toolbar Layout template string (Play Random Removed)
     let html = `
       <div class="score-bar">
         <div class="score-item">
@@ -142,18 +150,20 @@ async function loadQuestions(keyword = "", page = 1) {
       </div>
       <div class="toolbar">
         <button class="btn btn-primary" id="new-question-btn">+ New Question</button>
+        
         <div class="search-bar">
           <input type="text" id="keyword-input" placeholder="Search by keyword..." value="${keyword}" />
           <button class="btn btn-search" id="search-btn">Search</button>
           ${keyword ? `<button class="btn btn-clear" id="clear-btn">Clear</button>` : ""}
+          
+          <button class="btn btn-clear" id="toggle-unsolved-btn"></button>
         </div>
       </div>`;
 
-    if (questions.length === 0) {
-      html += '<p class="empty-state">No questions found. Create one to get started!</p>';
+    if (displayedQuestions.length === 0) {
+      html += '<p class="empty-state">No questions found matching this view filter!</p>';
     } else {
-      html += questions
-        .map(
+      html += displayedQuestions.map(
           (q) => `
         <article class="question-card ${q[CONFIG.API_FIELDS.SOLVED] ? "solved-card" : ""}">
           <h3>
@@ -193,10 +203,26 @@ async function loadQuestions(keyword = "", page = 1) {
         </div>`;
     }
 
+    // Inject HTML string into container element target
     container.innerHTML = html;
 
+    // --- Wire Layout Event Listeners Safely ---
     document.getElementById("new-question-btn").addEventListener("click", () => showQuestionForm());
 
+    // 👁️ Safe Hide Solved Toggle Wiring
+    const toggleBtn = document.getElementById("toggle-unsolved-btn");
+    if (toggleBtn) {
+      toggleBtn.innerHTML = showUnsolvedOnly ? "👁️ Show All" : "👁️ Hide Solved";
+      toggleBtn.style.color = showUnsolvedOnly ? "#ff9800" : "#4caf50";
+      toggleBtn.style.borderColor = showUnsolvedOnly ? "#ff9800" : "#4caf50";
+
+      toggleBtn.addEventListener("click", () => {
+        showUnsolvedOnly = !showUnsolvedOnly;
+        loadQuestions(keyword, page); 
+      });
+    }
+
+    // Core Functional System Wire Loops
     document.getElementById("search-btn").addEventListener("click", () => {
       loadQuestions(document.getElementById("keyword-input").value.trim(), 1);
     });
@@ -222,11 +248,11 @@ async function loadQuestions(keyword = "", page = 1) {
     });
 
     container.querySelectorAll(".btn-edit").forEach((el) => {
-      el.addEventListener("click", () => showQuestionForm(el.dataset.id));
+      if (el) el.addEventListener("click", () => showQuestionForm(el.dataset.id));
     });
 
     container.querySelectorAll(".btn-delete").forEach((el) => {
-      el.addEventListener("click", () => deleteQuestion(el.dataset.id));
+      if (el) el.addEventListener("click", () => deleteQuestion(el.dataset.id));
     });
 
     container.querySelectorAll(".btn-play").forEach((el) => {
@@ -418,12 +444,16 @@ async function playQuestion(qId) {
               Incorrect! The answer was: <strong>${result.correctAnswer}</strong>
             </div>`;
         }
+        
+        // Dynamic dashboard scoring refreshes on success loop
+        await renderUserStats();
+        await renderLeaderboard();
       } catch (err) {
         errorEl.textContent = err.message;
       }
     });
   } catch (err) {
-    container.innerHTML = `<p class="error">${err.message}</p>`;
+    container.innerHTML = `<p class="error">${err.message}</p>';`
   }
 }
 
@@ -450,7 +480,6 @@ async function renderUserStats() {
   if (!panel) return;
   
   try {
-    // Notice we removed the leading slash to match standard CONFIG layout patterns
     const stats = await apiFetch("/api/questions/user/stats");
     
     panel.innerHTML = `
@@ -469,10 +498,8 @@ async function renderLeaderboard() {
   if (!panel) return;
 
   try {
-
     const board = await apiFetch("/api/questions/game/leaderboard");
     
-   
     if (!board || board.length === 0) {
       panel.innerHTML = `
         <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #ffd700;">🏆 Top 5 Players</h3>
@@ -481,7 +508,6 @@ async function renderLeaderboard() {
       return; 
     }
 
-    
     const rows = board.slice(0, 5).map((p, idx) => `
       <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #fff;">
         <td style="padding: 4px 0;"><strong>#${idx + 1}</strong></td>
@@ -511,5 +537,3 @@ document.addEventListener("DOMContentLoaded", () => {
     showAuth();
   }
 });
-
-
