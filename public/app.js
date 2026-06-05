@@ -112,6 +112,8 @@ async function showApp() {
   document.getElementById("app-section").style.display = "block";
   document.getElementById("logout-btn").style.display = "inline-block";
   await loadQuestions();
+  await renderUserStats();
+  await renderLeaderboard();
 }
 
 async function loadQuestions(keyword = "", page = 1) {
@@ -442,35 +444,61 @@ function handleLogout() {
   showAuth();
 }
 
+// --- Game Stats & Leaderboard Renderers ---
+async function renderUserStats() {
+  const panel = document.getElementById("user-stats-panel");
+  if (!panel) return;
+  
+  try {
+    // Notice we removed the leading slash to match standard CONFIG layout patterns
+    const stats = await apiFetch("/api/questions/user/stats");
+    
+    panel.innerHTML = `
+      <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #ffd700;">📈 Your Progress</h3>
+      <p style="margin: 4px 0; color: #fff;">Total Attempts: <strong>${stats.totalAttempts ?? 0}</strong></p>
+      <p style="margin: 4px 0; color: #fff;">Correct Answers: <strong style="color: #4caf50;">${stats.correctAnswers ?? 0}</strong></p>
+    `;
+  } catch (err) {
+    console.error("User stats fetch error:", err);
+    panel.innerHTML = `<p style="color: #ff6b6b; margin: 0; font-size: 0.85rem;">Stats Error: ${err.message}</p>`;
+  }
+}
+
 async function renderLeaderboard() {
   const panel = document.getElementById("leaderboard-panel");
   if (!panel) return;
 
   try {
-    const board = await apiFetch("/questions/game/leaderboard");
+
+    const board = await apiFetch("/api/questions/game/leaderboard");
     
+   
     if (!board || board.length === 0) {
-      panel.innerHTML = `<h3 style="margin-top:0;font-size:1.1rem">🏆 Top 5 Players</h3><p class="empty-state">No rankings yet!</p>`;
-      return;
+      panel.innerHTML = `
+        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #ffd700;">🏆 Top 5 Players</h3>
+        <p style="color: #ccc; margin: 0; font-size: 0.85rem;">No rankings yet! Be the first!</p>
+      `;
+      return; 
     }
 
-    // Limit to top 5 and map rows
+    
     const rows = board.slice(0, 5).map((p, idx) => `
-      <tr style="border-bottom: 1px solid #eee;">
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #fff;">
         <td style="padding: 4px 0;"><strong>#${idx + 1}</strong></td>
         <td style="padding: 4px 0;">${p.name}</td>
-        <td style="padding: 4px 0; text-align: right; font-weight: bold; color: green;">${p.score} pts</td>
+        <td style="padding: 4px 0; text-align: right; font-weight: bold; color: #4caf50;">${p.score} pts</td>
       </tr>
     `).join('');
 
     panel.innerHTML = `
-      <h3 style="margin-top:0; margin-bottom: 0.5rem; font-size:1.1rem">🏆 Top 5 Players</h3>
+      <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #ffd700;">🏆 Top 5 Players</h3>
       <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
         <tbody>${rows}</tbody>
       </table>
     `;
   } catch (err) {
-    panel.innerHTML = `<p class="error">Leaderboard unavailable</p>`;
+    console.error("Leaderboard fetch error:", err);
+    panel.innerHTML = `<p style="color: #ff6b6b; margin: 0; font-size: 0.85rem;">Leaderboard Error: ${err.message}</p>`;
   }
 }
 
